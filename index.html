@@ -3,197 +3,209 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KALITEO – France</title>
+  <title>KALITEO Qualité de l'eau potable – France</title>
+
+  <!-- Favicon goutte d'eau -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%230ea5e9' d='M32 4C32 4 12 28 12 40c0 11 9 20 20 20s20-9 20-20C52 28 32 4 32 4z'/%3E%3Cpath fill='%23bae6fd' d='M32 12c0 0-12 16-12 26 0 6.6 5.4 12 12 12s12-5.4 12-12C44 28 32 12 32 12z'/%3E%3C/svg%3E">
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
     :root {
-      --primary: #0d6efd;
-      --success: #198754;
-      --danger: #dc3545;
-      --bg: #f8f9fa;
+      --primary: #0ea5e9;
+      --primary-dark: #0284c7;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --bg: #f8fafc;
       --card: #ffffff;
-      --text: #212529;
-      --muted: #6c757d;
-      --radius: 12px;
-      --shadow: 0 4px 20px rgba(0,0,0,.08);
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
     header {
-      background: linear-gradient(135deg, #0d6efd, #0a58ca);
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
       color: white;
-      padding: 0.85rem 1.2rem;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-      box-shadow: var(--shadow);
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
       z-index: 1000;
-      position: relative;
     }
-    header h1 {
-      font-size: 1.15rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .search-wrap {
-      position: relative;
-      flex: 1;
-      min-width: 260px;
-      max-width: 520px;
-    }
-    .search-bar {
-      display: flex;
-      gap: 0.5rem;
-    }
-    .search-bar input {
-      flex: 1;
-      padding: 0.55rem 0.9rem;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      outline: none;
-    }
-    .btn {
-      padding: 0.55rem 1rem;
-      border: none;
-      border-radius: 8px;
-      font-weight: 500;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: opacity .15s;
-    }
-    .btn:hover { opacity: .9; }
-    .btn-primary { background: white; color: var(--primary); }
-    .btn-geo { background: #198754; color: white; }
-    #suggestions {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 70px;
-      background: white;
-      border-radius: 0 0 10px 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.12);
-      max-height: 280px;
-      overflow-y: auto;
-      z-index: 2000;
-      display: none;
-    }
-    #suggestions.open { display: block; }
-    .suggestion-item {
-      padding: 0.65rem 1rem;
-      cursor: pointer;
-      border-bottom: 1px solid #f1f3f5;
-      color: var(--text);
-      font-size: 0.92rem;
-    }
-    .suggestion-item:hover, .suggestion-item.active {
-      background: #e7f1ff;
-    }
-    .suggestion-item small {
-      display: block;
-      color: var(--muted);
-      font-size: 0.78rem;
-      margin-top: 2px;
-    }
-    main {
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+    .logo { width: 32px; height: 32px; }
+    .main {
       flex: 1;
       display: grid;
       grid-template-columns: 380px 1fr;
       overflow: hidden;
     }
     @media (max-width: 900px) {
-      main { grid-template-columns: 1fr; grid-template-rows: 42% 58%; }
+      .main { grid-template-columns: 1fr; grid-template-rows: 45% 55%; }
     }
-    #sidebar {
+    .sidebar {
       background: var(--card);
-      border-right: 1px solid #dee2e6;
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-    .sidebar-header {
-      padding: 0.9rem 1rem;
-      border-bottom: 1px solid #eee;
-      background: #f1f3f5;
+    .search-box {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      background: #f1f5f9;
     }
-    .sidebar-header h2 { font-size: 1rem; margin-bottom: 0.25rem; }
-    .sidebar-header p { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.7rem; }
-    .filter-bar {
+    .search-row {
       display: flex;
-      gap: 0.4rem;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .search-row input[type="text"] {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-row input[type="text"]:focus { border-color: var(--primary); }
+    .btn {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--primary-dark); }
+    .btn-outline {
+      background: white;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    .btn-outline:hover { background: #e0f2fe; }
+    .date-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .date-row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .date-row input[type="date"] {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .filters {
+      display: flex;
+      gap: 6px;
       flex-wrap: wrap;
     }
     .filter-btn {
-      padding: 0.3rem 0.7rem;
-      border-radius: 999px;
-      border: 1px solid #ced4da;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
       background: white;
-      font-size: 0.8rem;
+      font-size: 13px;
       cursor: pointer;
-      transition: all .15s;
+      color: var(--muted);
     }
     .filter-btn.active {
       background: var(--primary);
       color: white;
       border-color: var(--primary);
     }
-    .filter-btn.conformes.active { background: var(--success); border-color: var(--success); }
-    .filter-btn.nonconformes.active { background: var(--danger); border-color: var(--danger); }
-    #results {
+    .filter-btn.conforme.active { background: var(--success); border-color: var(--success); }
+    .filter-btn.nonconforme.active { background: var(--danger); border-color: var(--danger); }
+    .suggestions {
+      position: absolute;
+      top: 100%;
+      left: 14px;
+      right: 14px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 2000;
+      box-shadow: 0 8px 20px rgba(0,0,0,.12);
+      display: none;
+    }
+    .suggestion-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+    }
+    .suggestion-item:hover, .suggestion-item.active { background: #e0f2fe; }
+    .commune-info {
+      padding: 10px 14px;
+      background: #f0f9ff;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .list {
       flex: 1;
       overflow-y: auto;
-      padding: 0.6rem;
+      padding: 8px;
     }
     .card {
-      background: var(--card);
-      border: 1px solid #e9ecef;
-      border-radius: var(--radius);
-      padding: 0.85rem;
-      margin-bottom: 0.6rem;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
       cursor: pointer;
-      transition: box-shadow .15s, border-color .15s;
+      transition: box-shadow .15s;
     }
-    .card:hover, .card.active {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(13,110,253,.2);
-    }
-    .card .date {
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 0.3rem;
-    }
-    .card .title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin-bottom: 0.25rem;
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
     }
     .badge {
-      display: inline-block;
-      padding: 0.15rem 0.5rem;
-      border-radius: 999px;
-      font-size: 0.72rem;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
       font-weight: 600;
     }
-    .badge-ok { background: #d1e7dd; color: #0f5132; }
-    .badge-ko { background: #f8d7da; color: #842029; }
-    #map {
-      height: 100%;
-      width: 100%;
-      background: #e9ecef;
-      cursor: crosshair;
+    .badge.ok { background: #dcfce7; color: #166534; }
+    .badge.ko { background: #fee2e2; color: #991b1b; }
+    .badge.unk { background: #f1f5f9; color: #475569; }
+    .card-date { font-weight: 600; font-size: 14px; }
+    .card-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .empty, .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 14px;
     }
-    #detail {
+    #map { height: 100%; width: 100%; }
+    .detail-panel {
       position: fixed;
-      top: 0; right: 0; bottom: 0;
-      width: min(420px, 100%);
+      top: 0; right: 0;
+      width: 420px;
+      max-width: 100%;
+      height: 100%;
       background: white;
       box-shadow: -4px 0 24px rgba(0,0,0,.15);
       z-index: 3000;
@@ -202,605 +214,482 @@
       display: flex;
       flex-direction: column;
     }
-    #detail.open { transform: translateX(0); }
+    .detail-panel.open { transform: translateX(0); }
     .detail-header {
-      padding: 1rem;
-      background: linear-gradient(135deg, #0d6efd, #0a58ca);
+      padding: 16px 20px;
+      background: var(--primary);
       color: white;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
     }
-    .detail-header h3 { font-size: 1.05rem; }
+    .detail-header h2 { font-size: 1.1rem; }
     .close-btn {
       background: transparent;
       border: none;
       color: white;
-      font-size: 1.5rem;
+      font-size: 24px;
       cursor: pointer;
       line-height: 1;
     }
-    .detail-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem;
-    }
-    .detail-body table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-    .detail-body th, .detail-body td {
-      padding: 0.4rem 0.5rem;
-      border-bottom: 1px solid #eee;
-      text-align: left;
-    }
-    .detail-body th { color: var(--muted); width: 40%; }
-    .param-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 0.45rem 0;
-      border-bottom: 1px solid #f1f3f5;
-      font-size: 0.88rem;
-    }
-    .param-name { flex: 1; padding-right: 0.5rem; }
-    .param-value { font-weight: 600; text-align: right; white-space: nowrap; }
-    .loading {
-      text-align: center;
-      padding: 2rem;
+    .detail-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .detail-section { margin-bottom: 18px; }
+    .detail-section h3 {
+      font-size: 13px;
+      text-transform: uppercase;
       color: var(--muted);
+      margin-bottom: 8px;
+      letter-spacing: .03em;
     }
-    .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid #dee2e6;
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      margin: 0 auto 0.8rem;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .empty {
-      text-align: center;
-      padding: 2.5rem 1rem;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-    footer {
-      font-size: 0.72rem;
-      color: var(--muted);
-      text-align: center;
-      padding: 0.4rem;
-      background: #f1f3f5;
-      border-top: 1px solid #dee2e6;
-    }
-    footer a { color: var(--primary); }
-    .map-legend {
-      background: white;
-      padding: 8px 12px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.15);
-      font-size: 0.8rem;
-      line-height: 1.5;
-    }
-    .map-legend i {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 6px;
-      vertical-align: middle;
-    }
-    /* Toast de feedback au clic carte */
-    #toast {
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; }
+    .toast {
       position: fixed;
-      bottom: 60px;
+      bottom: 24px;
       left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: #212529;
+      transform: translateX(-50%);
+      background: #1e293b;
       color: white;
-      padding: 0.6rem 1.2rem;
+      padding: 10px 20px;
       border-radius: 8px;
-      font-size: 0.9rem;
-      opacity: 0;
-      transition: all .25s ease;
+      font-size: 14px;
       z-index: 4000;
+      opacity: 0;
+      transition: opacity .3s;
       pointer-events: none;
     }
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
+    .toast.show { opacity: 1; }
+    .marker-icon {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,.4);
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>💧 KALITEO Qualité de l'eau potable</h1>
-    <div class="search-wrap">
-      <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="Commune, code postal…" autocomplete="off" />
-        <button class="btn btn-primary" id="searchBtn">Rechercher</button>
-        <button class="btn btn-geo" id="geoBtn" title="Ma position">📍</button>
-      </div>
-      <div id="suggestions"></div>
-    </div>
+    <svg class="logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#bae6fd" d="M32 4C32 4 12 28 12 40c0 11 9 20 20 20s20-9 20-20C52 28 32 4 32 4z"/>
+      <path fill="#fff" d="M32 12c0 0-12 16-12 26 0 6.6 5.4 12 12 12s12-5.4 12-12C44 28 32 12 32 12z"/>
+    </svg>
+    <h1>KALITEO Qualité de l'eau potable – France</h1>
   </header>
 
-  <main>
-    <aside id="sidebar">
-      <div class="sidebar-header">
-        <h2 id="communeTitle">Choisissez un lieu</h2>
-        <p id="communeInfo">Cliquez sur la carte, recherchez une commune ou utilisez votre position</p>
-        <div class="filter-bar">
-          <button class="filter-btn active" data-filter="all">Tous</button>
-          <button class="filter-btn conformes" data-filter="conformes">Conformes</button>
-          <button class="filter-btn nonconformes" data-filter="nonconformes">Non conformes</button>
+  <div class="main">
+    <div class="sidebar">
+      <div class="search-box" style="position:relative">
+        <div class="search-row">
+          <input type="text" id="searchInput" placeholder="Commune, code postal…" autocomplete="off" />
+          <button class="btn" id="btnSearch">Rechercher</button>
+          <button class="btn btn-outline" id="btnGeo" title="Ma position">📍</button>
         </div>
-      </div>
-      <div id="results">
-        <div class="empty">
-          Cliquez n’importe où sur la carte<br>
-          pour voir les analyses de la commune la plus proche.
-        </div>
-      </div>
-    </aside>
-    <div id="map"></div>
-  </main>
 
-  <div id="detail">
-    <div class="detail-header">
-      <div>
-        <h3 id="detailTitle">Détail du prélèvement</h3>
-        <small id="detailSub"></small>
+        <div class="date-row">
+          <label for="dateInput">Date cible :</label>
+          <input type="date" id="dateInput" />
+        </div>
+
+        <div class="filters">
+          <button class="filter-btn active" data-filter="all">Tous</button>
+          <button class="filter-btn conforme" data-filter="conforme">Conformes</button>
+          <button class="filter-btn nonconforme" data-filter="nonconforme">Non conformes</button>
+        </div>
+
+        <div class="suggestions" id="suggestions"></div>
       </div>
+
+      <div class="commune-info" id="communeInfo">Cliquez sur la carte ou recherchez une commune</div>
+      <div class="list" id="list">
+        <div class="empty">Aucun prélèvement chargé</div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <h2 id="detailTitle">Détail du prélèvement</h2>
       <button class="close-btn" id="closeDetail">×</button>
     </div>
     <div class="detail-body" id="detailBody"></div>
   </div>
 
-  <div id="toast"></div>
+  <div class="toast" id="toast"></div>
 
-  <footer>
-    Données : <a href="https://hubeau.eaufrance.fr/" target="_blank" rel="noopener">Hub’Eau</a> (Ministère de la Santé) ·
-    Fonds de carte : Esri · Application 100 % locale
-  </footer>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const HUBEAU = "https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis";
-    const GEO = "https://geo.api.gouv.fr/communes";
-    const SIZE = 200;
-
+    // ========== État global ==========
     let map, markersLayer;
-    let suggestTimer = null;
-    let currentSuggestions = [];
-    let activeSuggestIdx = -1;
+    let currentCommune = null;
     let allPrelevements = [];
     let currentFilter = "all";
-    let currentCommune = null;
+    let selectedDate = new Date().toISOString().slice(0, 10);
 
-    // Icônes
-    const iconOk = L.divIcon({
-      className: "",
-      html: `<div style="background:#198754;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
-    });
-    const iconKo = L.divIcon({
-      className: "",
-      html: `<div style="background:#dc3545;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
+    // ========== Initialisation ==========
+    document.getElementById("dateInput").value = selectedDate;
+
+    map = L.map("map").setView([46.6, 2.4], 6);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles © Esri",
+      maxZoom: 19
+    }).addTo(map);
+
+    markersLayer = L.layerGroup().addTo(map);
+
+    // Clic sur la carte → reverse geocode
+    map.on("click", async (e) => {
+      hideSuggestions();
+      showToast("Recherche de la commune…");
+      await searchByCoords(e.latlng.lat, e.latlng.lng);
     });
 
+    // ========== Helpers ==========
     function showToast(msg) {
       const t = document.getElementById("toast");
       t.textContent = msg;
       t.classList.add("show");
-      setTimeout(() => t.classList.remove("show"), 2200);
+      setTimeout(() => t.classList.remove("show"), 2500);
     }
 
-    function initMap() {
-      map = L.map("map", { zoomControl: true }).setView([46.6, 2.4], 6);
-
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-        attribution: "Tiles &copy; Esri",
-        maxZoom: 19
-      }).addTo(map);
-
-      markersLayer = L.layerGroup().addTo(map);
-
-      // Légende
-      const legend = L.control({ position: "bottomright" });
-      legend.onAdd = function () {
-        const div = L.DomUtil.create("div", "map-legend");
-        div.innerHTML = `
-          <i style="background:#198754"></i> Conforme<br>
-          <i style="background:#dc3545"></i> Non conforme
-        `;
-        return div;
-      };
-      legend.addTo(map);
-
-      // === Clic sur la carte → détection automatique de la commune ===
-      map.on("click", async (e) => {
-        hideSuggestions();
-        const { lat, lng } = e.latlng;
-        showToast("Recherche de la commune…");
-        await searchByCoords(lat, lng);
-      });
+    function hideSuggestions() {
+      document.getElementById("suggestions").style.display = "none";
     }
 
-    function showLoading() {
-      document.getElementById("results").innerHTML =
-        `<div class="loading"><div class="spinner"></div>Chargement des analyses…</div>`;
+    function isConforme(p) {
+      const c = (p.conclusion || "").toLowerCase();
+      if (c.includes("non conforme") || c.includes("non-conforme")) return false;
+      if (c.includes("conforme")) return true;
+      return null;
     }
 
-    function isConforme(conclusion) {
-      if (!conclusion) return true;
-      return /conforme/i.test(conclusion) && !/non\s+conforme/i.test(conclusion);
-    }
-
-    function badgeConformite(c) {
-      if (!c) return "";
-      const ok = isConforme(c);
-      return `<span class="badge ${ok ? "badge-ok" : "badge-ko"}">${ok ? "Conforme" : "Non conforme"}</span>`;
-    }
-
-    function formatDate(iso) {
-      if (!iso) return "—";
-      return new Date(iso).toLocaleDateString("fr-FR", {
-        day: "2-digit", month: "short", year: "numeric"
-      });
-    }
-
-    // Dispersion des marqueurs autour du centre (~150-400 m)
     function jitter(lat, lon, index) {
-      const angle = (index * 137.5) % 360 * Math.PI / 180;
-      const dist = 0.0015 + (index % 5) * 0.0006;
-      return [
-        lat + Math.cos(angle) * dist,
-        lon + Math.sin(angle) * dist
-      ];
+      const angle = index * 2.399963;
+      const r = 0.0018 + (index % 7) * 0.00035;
+      return [lat + Math.cos(angle) * r, lon + Math.sin(angle) * r];
     }
 
-    // ---------- Autocomplétion ----------
+    // ========== Autocomplete ==========
+    let suggestTimer = null;
+    const searchInput = document.getElementById("searchInput");
+    const suggestionsEl = document.getElementById("suggestions");
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(suggestTimer);
+      const q = searchInput.value.trim();
+      if (q.length < 2) { hideSuggestions(); return; }
+      suggestTimer = setTimeout(() => fetchSuggestions(q), 280);
+    });
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") hideSuggestions();
+    });
+
     async function fetchSuggestions(q) {
-      if (q.length < 2) {
-        hideSuggestions();
-        return;
-      }
       try {
-        if (/^\d{5}$/.test(q)) {
-          const res = await fetch(`${GEO}?codePostal=${q}&fields=nom,code,centre,codesPostaux,population&limit=8`);
-          currentSuggestions = await res.json();
-        } else {
-          const res = await fetch(`${GEO}?nom=${encodeURIComponent(q)}&fields=nom,code,centre,codesPostaux,population&boost=population&limit=8`);
-          currentSuggestions = await res.json();
-        }
-        renderSuggestions();
+        const url = `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=nom,code,codesPostaux,centre&boost=population&limit=8`;
+        const res = await fetch(url);
+        const data = await res.json();
+        renderSuggestions(data);
       } catch (e) {
         hideSuggestions();
       }
     }
 
-    function renderSuggestions() {
-      const box = document.getElementById("suggestions");
-      if (!currentSuggestions.length) {
-        hideSuggestions();
-        return;
-      }
-      box.innerHTML = currentSuggestions.map((c, i) => `
-        <div class="suggestion-item" data-idx="${i}">
-          ${c.nom}
-          <small>Code INSEE ${c.code}${c.codesPostaux ? " · CP " + c.codesPostaux[0] : ""}${c.population ? " · " + c.population.toLocaleString("fr-FR") + " hab." : ""}</small>
+    function renderSuggestions(list) {
+      if (!list.length) { hideSuggestions(); return; }
+      suggestionsEl.innerHTML = list.map(c => `
+        <div class="suggestion-item" data-code="${c.code}" data-nom="${c.nom}" data-lat="${c.centre?.coordinates[1]}" data-lon="${c.centre?.coordinates[0]}">
+          <strong>${c.nom}</strong> <span style="color:#64748b">(${(c.codesPostaux||[])[0] || c.code})</span>
         </div>
       `).join("");
-      box.classList.add("open");
-      activeSuggestIdx = -1;
-
-      box.querySelectorAll(".suggestion-item").forEach(el => {
+      suggestionsEl.style.display = "block";
+      suggestionsEl.querySelectorAll(".suggestion-item").forEach(el => {
         el.addEventListener("click", () => {
-          const commune = currentSuggestions[+el.dataset.idx];
-          document.getElementById("searchInput").value = commune.nom;
+          searchInput.value = el.dataset.nom;
           hideSuggestions();
-          loadCommune(commune);
+          loadCommune({
+            code: el.dataset.code,
+            nom: el.dataset.nom,
+            lat: parseFloat(el.dataset.lat),
+            lon: parseFloat(el.dataset.lon)
+          });
         });
       });
     }
 
-    function hideSuggestions() {
-      document.getElementById("suggestions").classList.remove("open");
-      currentSuggestions = [];
-      activeSuggestIdx = -1;
-    }
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-box")) hideSuggestions();
+    });
 
-    // ---------- API ----------
-    async function getCommuneByNameOrCP(q) {
-      const coordMatch = q.match(/^(-?\d+\.?\d*)\s*[,;]\s*(-?\d+\.?\d*)$/);
-      if (coordMatch) return getCommuneByCoords(+coordMatch[1], +coordMatch[2]);
-
-      if (/^\d{5}$/.test(q.trim())) {
-        const res = await fetch(`${GEO}?codePostal=${q.trim()}&fields=nom,code,centre,codesPostaux,population&limit=1`);
-        const data = await res.json();
-        return data[0] || null;
+    // ========== Recherche ==========
+    document.getElementById("btnSearch").addEventListener("click", () => {
+      const q = searchInput.value.trim();
+      if (q) doTextSearch(q);
+    });
+    searchInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        const q = searchInput.value.trim();
+        if (q) doTextSearch(q);
       }
+    });
 
-      const res = await fetch(`${GEO}?nom=${encodeURIComponent(q)}&fields=nom,code,centre,codesPostaux,population&boost=population&limit=1`);
-      const data = await res.json();
-      return data[0] || null;
+    async function doTextSearch(q) {
+      hideSuggestions();
+      try {
+        const url = `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=nom,code,centre&boost=population&limit=1`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.length) {
+          const c = data[0];
+          loadCommune({
+            code: c.code,
+            nom: c.nom,
+            lat: c.centre.coordinates[1],
+            lon: c.centre.coordinates[0]
+          });
+        } else {
+          showToast("Commune non trouvée");
+        }
+      } catch (e) {
+        showToast("Erreur de recherche");
+      }
     }
 
-    async function getCommuneByCoords(lat, lon) {
-      const res = await fetch(`${GEO}?lat=${lat}&lon=${lon}&fields=nom,code,centre,codesPostaux,population&limit=1`);
-      const data = await res.json();
-      return data[0] || null;
+    document.getElementById("btnGeo").addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        showToast("Géolocalisation non supportée");
+        return;
+      }
+      showToast("Localisation…");
+      navigator.geolocation.getCurrentPosition(
+        pos => searchByCoords(pos.coords.latitude, pos.coords.longitude),
+        () => showToast("Impossible d'obtenir la position")
+      );
+    });
+
+    async function searchByCoords(lat, lon) {
+      try {
+        const url = `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lon}&fields=nom,code,centre`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.length) {
+          const c = data[0];
+          loadCommune({
+            code: c.code,
+            nom: c.nom,
+            lat: c.centre?.coordinates[1] || lat,
+            lon: c.centre?.coordinates[0] || lon
+          });
+        } else {
+          showToast("Aucune commune trouvée à cet endroit");
+        }
+      } catch (e) {
+        showToast("Erreur de géocodage");
+      }
     }
 
-    async function fetchAnalyses(codeCommune) {
-      const url = `${HUBEAU}?code_commune=${codeCommune}&size=${SIZE}&sort=desc`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Erreur API Hub’Eau (" + res.status + ")");
-      const json = await res.json();
-      return json.data || [];
+    // ========== Chargement des analyses ==========
+    async function loadCommune(commune) {
+      currentCommune = commune;
+      selectedDate = document.getElementById("dateInput").value || new Date().toISOString().slice(0, 10);
+
+      document.getElementById("communeInfo").innerHTML =
+        `<strong>${commune.nom}</strong> (${commune.code}) — analyses autour du ${formatDate(selectedDate)}`;
+
+      document.getElementById("list").innerHTML = `<div class="loading">Chargement des analyses…</div>`;
+      markersLayer.clearLayers();
+      allPrelevements = [];
+
+      // Fenêtre de dates : ± 180 jours autour de la date choisie
+      const target = new Date(selectedDate);
+      const minD = new Date(target);
+      minD.setDate(minD.getDate() - 180);
+      const maxD = new Date(target);
+      maxD.setDate(maxD.getDate() + 60);
+
+      const dateMin = minD.toISOString().slice(0, 10);
+      const dateMax = maxD.toISOString().slice(0, 10);
+
+      try {
+        const url = `https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${commune.code}&date_min_prelevement=${dateMin}&date_max_prelevement=${dateMax}&size=20000`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const rows = json.data || [];
+
+        if (rows.length === 0) {
+          // Fallback : dernière année disponible
+          const url2 = `https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${commune.code}&size=5000`;
+          const res2 = await fetch(url2);
+          const json2 = await res2.json();
+          processResults(json2.data || [], commune, target);
+        } else {
+          processResults(rows, commune, target);
+        }
+      } catch (err) {
+        document.getElementById("list").innerHTML = `<div class="empty">Erreur de chargement des données</div>`;
+        showToast("Erreur API Hub'Eau");
+      }
     }
 
-    function groupByPrelevement(rows) {
-      const map = new Map();
-      for (const r of rows) {
-        const key = r.code_prelevement;
-        if (!map.has(key)) {
-          map.set(key, {
-            code_prelevement: key,
-            date_prelevement: r.date_prelevement,
-            conclusion: r.conclusion_conformite_prelevement,
-            nom_commune: r.nom_commune,
-            nom_distributeur: r.nom_distributeur,
-            nom_uge: r.nom_uge,
-            reseaux: r.reseaux || [],
+    function processResults(rows, commune, targetDate) {
+      // Grouper par code_prelevement
+      const mapPrelev = new Map();
+      rows.forEach(r => {
+        const code = r.code_prelevement;
+        if (!mapPrelev.has(code)) {
+          mapPrelev.set(code, {
+            code,
+            date: r.date_prelevement,
+            conclusion: r.conclusion_conformite_prelevement || "",
+            distributeur: r.nom_distributeur || r.nom_uge || "—",
+            commune: r.nom_commune || commune.nom,
             params: []
           });
         }
-        map.get(key).params.push({
-          libelle: r.libelle_parametre,
-          resultat: r.resultat_alphanumerique ?? r.resultat_numerique,
-          unite: r.libelle_unite || ""
+        mapPrelev.get(code).params.push({
+          libelle: r.libelle_parametre || r.libelle_parametre_web || r.code_parametre,
+          resultat: r.resultat_alphanumerique || (r.resultat_numerique != null ? r.resultat_numerique + " " + (r.libelle_unite || "") : "—"),
+          limite: r.limite_qualite_parametre,
+          reference: r.reference_qualite_parametre
         });
-      }
-      return Array.from(map.values()).sort(
-        (a, b) => new Date(b.date_prelevement) - new Date(a.date_prelevement)
-      );
+      });
+
+      allPrelevements = Array.from(mapPrelev.values());
+
+      // Trier par proximité de date
+      allPrelevements.sort((a, b) => {
+        const da = Math.abs(new Date(a.date) - targetDate);
+        const db = Math.abs(new Date(b.date) - targetDate);
+        return da - db;
+      });
+
+      renderList();
+      updateMapMarkers(commune);
+      map.setView([commune.lat, commune.lon], 12);
     }
 
-    // ---------- UI ----------
+    // ========== Filtres ==========
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        renderList();
+        if (currentCommune) updateMapMarkers(currentCommune);
+      });
+    });
+
     function getFiltered() {
-      if (currentFilter === "conformes") {
-        return allPrelevements.filter(p => isConforme(p.conclusion));
-      }
-      if (currentFilter === "nonconformes") {
-        return allPrelevements.filter(p => !isConforme(p.conclusion));
-      }
-      return allPrelevements;
+      if (currentFilter === "all") return allPrelevements;
+      return allPrelevements.filter(p => {
+        const conf = isConforme(p);
+        if (currentFilter === "conforme") return conf === true;
+        if (currentFilter === "nonconforme") return conf === false;
+        return true;
+      });
     }
 
-    function renderResults() {
-      const prelevements = getFiltered();
-      const container = document.getElementById("results");
-
-      if (!prelevements.length) {
-        container.innerHTML = `<div class="empty">Aucun prélèvement ${currentFilter === "all" ? "" : currentFilter} pour cette commune.</div>`;
-        updateMapMarkers(prelevements);
+    function renderList() {
+      const list = getFiltered();
+      const container = document.getElementById("list");
+      if (!list.length) {
+        container.innerHTML = `<div class="empty">Aucun prélèvement pour ce filtre</div>`;
         return;
       }
-
-      container.innerHTML = prelevements.map((p, i) => `
-        <div class="card" data-idx="${i}">
-          <div class="date">${formatDate(p.date_prelevement)} · ${p.params.length} paramètre(s)</div>
-          <div class="title">${p.nom_distributeur || "Distributeur inconnu"}</div>
-          <div style="margin-top:0.35rem">${badgeConformite(p.conclusion)}</div>
-        </div>
-      `).join("");
+      container.innerHTML = list.map((p, i) => {
+        const conf = isConforme(p);
+        const badgeClass = conf === true ? "ok" : conf === false ? "ko" : "unk";
+        const badgeText = conf === true ? "Conforme" : conf === false ? "Non conforme" : "—";
+        return `
+          <div class="card" data-idx="${i}">
+            <div class="card-header">
+              <div class="card-date">${formatDate(p.date)}</div>
+              <span class="badge ${badgeClass}">${badgeText}</span>
+            </div>
+            <div class="card-meta">${p.distributeur}</div>
+            <div class="card-meta">${p.params.length} paramètre(s)</div>
+          </div>
+        `;
+      }).join("");
 
       container.querySelectorAll(".card").forEach(card => {
         card.addEventListener("click", () => {
-          container.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
-          card.classList.add("active");
-          openDetail(prelevements[+card.dataset.idx]);
+          const idx = parseInt(card.dataset.idx);
+          openDetail(list[idx]);
         });
       });
-
-      updateMapMarkers(prelevements);
     }
 
-    function openDetail(p) {
-      document.getElementById("detailTitle").textContent = `Prélèvement du ${formatDate(p.date_prelevement)}`;
-      document.getElementById("detailSub").textContent = p.nom_commune;
-
-      let html = `
-        <p style="margin-bottom:0.8rem">${badgeConformite(p.conclusion)}</p>
-        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">${p.conclusion || ""}</p>
-        <table>
-          <tr><th>Distributeur</th><td>${p.nom_distributeur || "—"}</td></tr>
-          <tr><th>UGE</th><td>${p.nom_uge || "—"}</td></tr>
-          <tr><th>Réseau(x)</th><td>${(p.reseaux || []).map(r => r.nom).join(", ") || "—"}</td></tr>
-          <tr><th>Code prélèvement</th><td>${p.code_prelevement}</td></tr>
-        </table>
-        <h4 style="margin:1.2rem 0 0.6rem;font-size:0.95rem">Paramètres analysés</h4>
-      `;
-      p.params.forEach(param => {
-        html += `
-          <div class="param-row">
-            <span class="param-name">${param.libelle}</span>
-            <span class="param-value">${param.resultat ?? "—"} ${param.unite}</span>
-          </div>`;
-      });
-      document.getElementById("detailBody").innerHTML = html;
-      document.getElementById("detail").classList.add("open");
+    function formatDate(d) {
+      if (!d) return "—";
+      const dt = new Date(d);
+      return dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
     }
 
-    function closeDetail() {
-      document.getElementById("detail").classList.remove("open");
-    }
-
-    function updateMapMarkers(prelevements) {
+    // ========== Carte markers ==========
+    function updateMapMarkers(commune) {
       markersLayer.clearLayers();
-      if (!currentCommune?.centre) return;
-
-      const [lon, lat] = currentCommune.centre.coordinates;
-      map.setView([lat, lon], 13);
-
-      // Cercle de la commune
-      L.circle([lat, lon], {
-        radius: 1200,
-        color: "#0d6efd",
-        fillOpacity: 0.05,
-        weight: 1.5
-      }).addTo(markersLayer);
-
-      prelevements.forEach((p, i) => {
-        const [jLat, jLon] = jitter(lat, lon, i);
-        const ok = isConforme(p.conclusion);
-        const marker = L.marker([jLat, jLon], {
-          icon: ok ? iconOk : iconKo
-        }).addTo(markersLayer);
-
-        marker.bindPopup(`
-          <strong>${formatDate(p.date_prelevement)}</strong><br>
-          ${p.nom_distributeur || ""}<br>
-          ${badgeConformite(p.conclusion)}
-        `);
-
-        marker.on("click", () => openDetail(p));
+      const list = getFiltered();
+      list.forEach((p, i) => {
+        const [lat, lon] = jitter(commune.lat, commune.lon, i);
+        const conf = isConforme(p);
+        const color = conf === true ? "#22c55e" : conf === false ? "#ef4444" : "#94a3b8";
+        const icon = L.divIcon({
+          className: "",
+          html: `<div class="marker-icon" style="background:${color}"></div>`,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        });
+        const m = L.marker([lat, lon], { icon });
+        m.bindPopup(`<strong>${formatDate(p.date)}</strong><br>${p.distributeur}<br><em>${conf === true ? "Conforme" : conf === false ? "Non conforme" : "—"}</em>`);
+        m.on("click", () => openDetail(p));
+        markersLayer.addLayer(m);
       });
     }
 
-    async function loadCommune(commune) {
-      if (!commune) {
-        document.getElementById("results").innerHTML =
-          `<div class="empty">Aucune commune trouvée à cet emplacement.</div>`;
-        showToast("Aucune commune trouvée");
-        return;
-      }
-      currentCommune = commune;
-      document.getElementById("communeTitle").textContent = commune.nom;
-      document.getElementById("communeInfo").textContent =
-        `Code INSEE ${commune.code}${commune.population ? " · " + commune.population.toLocaleString("fr-FR") + " hab." : ""}`;
-
-      // Reset filter sur "Tous"
-      currentFilter = "all";
-      document.querySelectorAll(".filter-btn").forEach(b => {
-        b.classList.toggle("active", b.dataset.filter === "all");
-      });
-
-      showLoading();
-      try {
-        const raw = await fetchAnalyses(commune.code);
-        allPrelevements = groupByPrelevement(raw);
-        renderResults();
-        showToast(`${commune.nom} – ${allPrelevements.length} prélèvement(s)`);
-      } catch (err) {
-        document.getElementById("results").innerHTML =
-          `<div class="empty">Erreur : ${err.message}</div>`;
-      }
+    // ========== Détail ==========
+    function openDetail(p) {
+      const conf = isConforme(p);
+      document.getElementById("detailTitle").textContent = `Prélèvement du ${formatDate(p.date)}`;
+      let html = `
+        <div class="detail-section">
+          <h3>Informations</h3>
+          <p><strong>Commune :</strong> ${p.commune}</p>
+          <p><strong>Distributeur :</strong> ${p.distributeur}</p>
+          <p><strong>Conclusion :</strong> ${p.conclusion || "—"}</p>
+          <p><strong>Conformité :</strong> ${conf === true ? "✅ Conforme" : conf === false ? "❌ Non conforme" : "—"}</p>
+        </div>
+        <div class="detail-section">
+          <h3>Paramètres analysés (${p.params.length})</h3>
+          <table>
+            <thead><tr><th>Paramètre</th><th>Résultat</th></tr></thead>
+            <tbody>
+              ${p.params.map(par => `
+                <tr>
+                  <td>${par.libelle}</td>
+                  <td>${par.resultat}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+      document.getElementById("detailBody").innerHTML = html;
+      document.getElementById("detailPanel").classList.add("open");
     }
 
-    // === Point d’entrée principal pour un clic carte ou GPS ===
-    async function searchByCoords(lat, lon) {
-      showLoading();
-      try {
-        const commune = await getCommuneByCoords(lat, lon);
-        await loadCommune(commune);
-      } catch (err) {
-        document.getElementById("results").innerHTML =
-          `<div class="empty">Impossible de déterminer la commune.</div>`;
-        showToast("Erreur de géolocalisation inverse");
-      }
-    }
-
-    async function doSearch() {
-      const q = document.getElementById("searchInput").value.trim();
-      if (!q) return;
-      hideSuggestions();
-      showLoading();
-      const commune = await getCommuneByNameOrCP(q);
-      await loadCommune(commune);
-    }
-
-    // ---------- Events ----------
-    const input = document.getElementById("searchInput");
-
-    input.addEventListener("input", () => {
-      clearTimeout(suggestTimer);
-      const q = input.value.trim();
-      if (q.length < 2) {
-        hideSuggestions();
-        return;
-      }
-      suggestTimer = setTimeout(() => fetchSuggestions(q), 220);
+    document.getElementById("closeDetail").addEventListener("click", () => {
+      document.getElementById("detailPanel").classList.remove("open");
     });
 
-    input.addEventListener("keydown", (e) => {
-      const items = document.querySelectorAll(".suggestion-item");
-      if (!items.length) {
-        if (e.key === "Enter") doSearch();
-        return;
-      }
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        activeSuggestIdx = Math.min(activeSuggestIdx + 1, items.length - 1);
-        items.forEach((el, i) => el.classList.toggle("active", i === activeSuggestIdx));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        activeSuggestIdx = Math.max(activeSuggestIdx - 1, 0);
-        items.forEach((el, i) => el.classList.toggle("active", i === activeSuggestIdx));
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        if (activeSuggestIdx >= 0) {
-          items[activeSuggestIdx].click();
-        } else {
-          doSearch();
-        }
-      } else if (e.key === "Escape") {
-        hideSuggestions();
+    // Changement de date → recharger si une commune est déjà sélectionnée
+    document.getElementById("dateInput").addEventListener("change", () => {
+      if (currentCommune) {
+        loadCommune(currentCommune);
       }
     });
-
-    document.getElementById("searchBtn").addEventListener("click", doSearch);
-    document.getElementById("closeDetail").addEventListener("click", closeDetail);
-
-    document.getElementById("geoBtn").addEventListener("click", () => {
-      hideSuggestions();
-      if (!navigator.geolocation) {
-        alert("Géolocalisation non supportée");
-        return;
-      }
-      showLoading();
-      showToast("Localisation en cours…");
-      navigator.geolocation.getCurrentPosition(
-        pos => searchByCoords(pos.coords.latitude, pos.coords.longitude),
-        () => {
-          document.getElementById("results").innerHTML =
-            `<div class="empty">Impossible d’obtenir votre position.<br>Vérifiez les permissions du navigateur.</div>`;
-          showToast("Position refusée");
-        },
-        { enableHighAccuracy: true, timeout: 12000 }
-      );
-    });
-
-    // Filtres
-    document.querySelectorAll(".filter-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        currentFilter = btn.dataset.filter;
-        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        renderResults();
-      });
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!e.target.closest(".search-wrap")) hideSuggestions();
-    });
-
-    initMap();
   </script>
 </body>
 </html>
