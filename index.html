@@ -3,15 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KALITEO Qualité de l'eau potable – France</title>
+  <title>KALITEO – Qualité de l'eau potable – France</title>
 
-  <!-- Favicon goutte d'eau -->
+  <!--
+    ============================================================
+    KALITEO – Application web locale de consultation de la qualité
+    de l'eau potable en France
+    ============================================================
+
+    Objectif :
+    Permettre à n'importe quel utilisateur de visualiser les analyses
+    d'eau potable (contrôle sanitaire) sur une carte interactive,
+    pour une commune donnée, à une date cible (ou la plus proche).
+
+    Fonctionnalités principales :
+    - Recherche par nom de commune / code postal (autocomplete)
+    - Géolocalisation navigateur
+    - Clic n'importe où sur la carte → détection automatique de la commune
+    - Sélecteur de date (calendrier) – par défaut = aujourd'hui
+    - Affichage des prélèvements les plus proches de la date choisie
+    - Filtre Conformité : Tous / Conformes / Non conformes
+    - Markers colorés (vert = conforme, rouge = non conforme)
+    - Panneau de détail complet des paramètres d'analyse
+    - Volet latéral pliable / dépliable par l'utilisateur
+
+    APIs utilisées (publiques, sans clé) :
+    1. Hub'Eau – Qualité de l'eau potable
+       Endpoint : /api/v1/qualite_eau_potable/resultats_dis
+       Doc     : https://hubeau.eaufrance.fr/page/api-qualite-eau-potable
+
+    2. geo.api.gouv.fr
+       - Recherche de communes + autocomplete
+       - Reverse geocoding (lat/lon → commune)
+
+    3. Tuiles cartographiques Esri World Street Map
+       (pas de clé API nécessaire)
+
+    Architecture :
+    - Fichier unique HTML + CSS + JS (pas de build)
+    - Leaflet.js (CDN)
+    - Tout le code côté client (pas de backend)
+
+    Maintenance – points clés :
+    - Constantes regroupées dans CONFIG (fenêtre de dates, jitter, zoom…)
+    - Variables CSS en haut de <style> pour les couleurs
+    - Sections JS clairement commentées
+    - Toggle sidebar : classe .sidebar-collapsed sur <body>
+    ============================================================
+  -->
+
+  <!-- Favicon – goutte d'eau (SVG embarqué) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%230ea5e9' d='M32 4C32 4 12 28 12 40c0 11 9 20 20 20s20-9 20-20C52 28 32 4 32 4z'/%3E%3Cpath fill='%23bae6fd' d='M32 12c0 0-12 16-12 26 0 6.6 5.4 12 12 12s12-5.4 12-12C44 28 32 12 32 12z'/%3E%3C/svg%3E">
 
+  <!-- Leaflet CSS + JS (CDN) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
+    /* =========================================================
+       VARIABLES CSS – palette et thème
+       ========================================================= */
     :root {
       --primary: #0ea5e9;
       --primary-dark: #0284c7;
@@ -22,8 +73,11 @@
       --text: #1e293b;
       --muted: #64748b;
       --border: #e2e8f0;
+      --sidebar-width: 380px;   /* largeur du volet ouvert */
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
@@ -33,6 +87,8 @@
       flex-direction: column;
       overflow: hidden;
     }
+
+    /* ---------- Header ---------- */
     header {
       background: linear-gradient(135deg, #0ea5e9, #0284c7);
       color: white;
@@ -43,29 +99,80 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.15);
       z-index: 1000;
     }
-    header h1 { font-size: 1.25rem; font-weight: 600; }
-    .logo { width: 32px; height: 32px; }
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      flex: 1;
+    }
+    .logo { width: 32px; height: 32px; flex-shrink: 0; }
+
+    /* Bouton toggle sidebar dans le header */
+    .btn-toggle-sidebar {
+      background: rgba(255,255,255,.2);
+      border: 1px solid rgba(255,255,255,.35);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .btn-toggle-sidebar:hover {
+      background: rgba(255,255,255,.35);
+    }
+
+    /* ---------- Layout principal ---------- */
     .main {
       flex: 1;
       display: grid;
-      grid-template-columns: 380px 1fr;
+      grid-template-columns: var(--sidebar-width) 1fr;
       overflow: hidden;
+      transition: grid-template-columns .3s ease;
     }
+
+    /* État replié : le volet disparaît, la carte prend tout */
+    body.sidebar-collapsed .main {
+      grid-template-columns: 0 1fr;
+    }
+
     @media (max-width: 900px) {
-      .main { grid-template-columns: 1fr; grid-template-rows: 45% 55%; }
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 45% 55%;
+      }
+      body.sidebar-collapsed .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 0 100%;
+      }
     }
+
+    /* ---------- Sidebar ---------- */
     .sidebar {
       background: var(--card);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      min-width: 0; /* important pour l'animation de collapse */
+      transition: opacity .25s ease;
     }
+    body.sidebar-collapsed .sidebar {
+      opacity: 0;
+      pointer-events: none;
+    }
+
     .search-box {
       padding: 14px;
       border-bottom: 1px solid var(--border);
       background: #f1f5f9;
+      position: relative;
     }
+
     .search-row {
       display: flex;
       gap: 8px;
@@ -79,7 +186,10 @@
       font-size: 14px;
       outline: none;
     }
-    .search-row input[type="text"]:focus { border-color: var(--primary); }
+    .search-row input[type="text"]:focus {
+      border-color: var(--primary);
+    }
+
     .btn {
       padding: 10px 14px;
       border: none;
@@ -98,13 +208,18 @@
       border: 1px solid var(--primary);
     }
     .btn-outline:hover { background: #e0f2fe; }
+
     .date-row {
       display: flex;
       align-items: center;
       gap: 10px;
       margin-bottom: 10px;
     }
-    .date-row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .date-row label {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
     .date-row input[type="date"] {
       flex: 1;
       padding: 8px 10px;
@@ -112,6 +227,7 @@
       border-radius: 8px;
       font-size: 14px;
     }
+
     .filters {
       display: flex;
       gap: 6px;
@@ -131,8 +247,15 @@
       color: white;
       border-color: var(--primary);
     }
-    .filter-btn.conforme.active { background: var(--success); border-color: var(--success); }
-    .filter-btn.nonconforme.active { background: var(--danger); border-color: var(--danger); }
+    .filter-btn.conforme.active {
+      background: var(--success);
+      border-color: var(--success);
+    }
+    .filter-btn.nonconforme.active {
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
     .suggestions {
       position: absolute;
       top: 100%;
@@ -153,7 +276,11 @@
       border-bottom: 1px solid #f1f5f9;
       font-size: 14px;
     }
-    .suggestion-item:hover, .suggestion-item.active { background: #e0f2fe; }
+    .suggestion-item:hover,
+    .suggestion-item.active {
+      background: #e0f2fe;
+    }
+
     .commune-info {
       padding: 10px 14px;
       background: #f0f9ff;
@@ -166,6 +293,7 @@
       overflow-y: auto;
       padding: 8px;
     }
+
     .card {
       background: white;
       border: 1px solid var(--border);
@@ -188,18 +316,55 @@
       border-radius: 12px;
       font-weight: 600;
     }
-    .badge.ok { background: #dcfce7; color: #166534; }
-    .badge.ko { background: #fee2e2; color: #991b1b; }
+    .badge.ok  { background: #dcfce7; color: #166534; }
+    .badge.ko  { background: #fee2e2; color: #991b1b; }
     .badge.unk { background: #f1f5f9; color: #475569; }
     .card-date { font-weight: 600; font-size: 14px; }
     .card-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
     .empty, .loading {
       text-align: center;
       padding: 40px 20px;
       color: var(--muted);
       font-size: 14px;
     }
-    #map { height: 100%; width: 100%; }
+
+    /* ---------- Carte ---------- */
+    #map {
+      height: 100%;
+      width: 100%;
+      min-width: 0;
+    }
+
+    /* Bouton flottant pour rouvrir le volet (visible uniquement quand replié) */
+    .btn-reopen-sidebar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: white;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 14px rgba(0,0,0,.15);
+      cursor: pointer;
+      font-size: 22px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      transition: background .2s, transform .2s;
+    }
+    .btn-reopen-sidebar:hover {
+      background: #e0f2fe;
+      transform: scale(1.05);
+    }
+    body.sidebar-collapsed .btn-reopen-sidebar {
+      display: flex;
+    }
+
+    /* ---------- Panneau de détail ---------- */
     .detail-panel {
       position: fixed;
       top: 0; right: 0;
@@ -232,7 +397,11 @@
       cursor: pointer;
       line-height: 1;
     }
-    .detail-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .detail-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
     .detail-section { margin-bottom: 18px; }
     .detail-section h3 {
       font-size: 13px;
@@ -241,9 +410,19 @@
       margin-bottom: 8px;
       letter-spacing: .03em;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 8px 6px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
     th { color: var(--muted); font-weight: 500; }
+
+    /* Toast */
     .toast {
       position: fixed;
       bottom: 24px;
@@ -260,8 +439,10 @@
       pointer-events: none;
     }
     .toast.show { opacity: 1; }
+
     .marker-icon {
-      width: 18px; height: 18px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       border: 2px solid white;
       box-shadow: 0 1px 4px rgba(0,0,0,.4);
@@ -269,17 +450,27 @@
   </style>
 </head>
 <body>
+
+  <!-- ===================== HEADER ===================== -->
   <header>
     <svg class="logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
       <path fill="#bae6fd" d="M32 4C32 4 12 28 12 40c0 11 9 20 20 20s20-9 20-20C52 28 32 4 32 4z"/>
       <path fill="#fff" d="M32 12c0 0-12 16-12 26 0 6.6 5.4 12 12 12s12-5.4 12-12C44 28 32 12 32 12z"/>
     </svg>
-    <h1>KALITEO Qualité de l'eau potable – France</h1>
+    <h1>KALITEO – Qualité de l'eau potable – France</h1>
+
+    <!-- Bouton pour plier / déplier le volet latéral -->
+    <button class="btn-toggle-sidebar" id="btnToggleSidebar" title="Replier / Déplier le panneau">
+      ☰
+    </button>
   </header>
 
+  <!-- ===================== LAYOUT PRINCIPAL ===================== -->
   <div class="main">
-    <div class="sidebar">
-      <div class="search-box" style="position:relative">
+
+    <!-- Sidebar (volet latéral) -->
+    <div class="sidebar" id="sidebar">
+      <div class="search-box">
         <div class="search-row">
           <input type="text" id="searchInput" placeholder="Commune, code postal…" autocomplete="off" />
           <button class="btn" id="btnSearch">Rechercher</button>
@@ -300,15 +491,25 @@
         <div class="suggestions" id="suggestions"></div>
       </div>
 
-      <div class="commune-info" id="communeInfo">Cliquez sur la carte ou recherchez une commune</div>
+      <div class="commune-info" id="communeInfo">
+        Cliquez sur la carte ou recherchez une commune
+      </div>
+
       <div class="list" id="list">
         <div class="empty">Aucun prélèvement chargé</div>
       </div>
     </div>
 
-    <div id="map"></div>
+    <!-- Zone carte + bouton flottant de réouverture -->
+    <div style="position:relative; min-width:0;">
+      <button class="btn-reopen-sidebar" id="btnReopenSidebar" title="Afficher le panneau">
+        ☰
+      </button>
+      <div id="map"></div>
+    </div>
   </div>
 
+  <!-- ===================== PANNEAU DÉTAIL ===================== -->
   <div class="detail-panel" id="detailPanel">
     <div class="detail-header">
       <h2 id="detailTitle">Détail du prélèvement</h2>
@@ -320,32 +521,77 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ========== État global ==========
-    let map, markersLayer;
+    /* ============================================================
+       CONSTANTES – facilement modifiables
+       ============================================================ */
+    const CONFIG = {
+      DAYS_BEFORE: 180,       // jours avant la date cible
+      DAYS_AFTER: 60,         // jours après
+      API_SIZE: 20000,
+      FALLBACK_SIZE: 5000,
+      COMMUNE_ZOOM: 12,
+      JITTER_BASE: 0.0018,
+      JITTER_STEP: 0.00035
+    };
+
+    /* ============================================================
+       ÉTAT GLOBAL
+       ============================================================ */
+    let map;
+    let markersLayer;
     let currentCommune = null;
     let allPrelevements = [];
     let currentFilter = "all";
     let selectedDate = new Date().toISOString().slice(0, 10);
+    let sidebarCollapsed = false;
 
-    // ========== Initialisation ==========
+    /* ============================================================
+       INITIALISATION
+       ============================================================ */
     document.getElementById("dateInput").value = selectedDate;
 
     map = L.map("map").setView([46.6, 2.4], 6);
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-      attribution: "Tiles © Esri",
-      maxZoom: 19
-    }).addTo(map);
+
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "Tiles © Esri", maxZoom: 19 }
+    ).addTo(map);
 
     markersLayer = L.layerGroup().addTo(map);
 
-    // Clic sur la carte → reverse geocode
+    // Clic carte → reverse geocode
     map.on("click", async (e) => {
       hideSuggestions();
       showToast("Recherche de la commune…");
       await searchByCoords(e.latlng.lat, e.latlng.lng);
     });
 
-    // ========== Helpers ==========
+    /* ============================================================
+       TOGGLE SIDEBAR (plier / déplier)
+       ============================================================ */
+    const btnToggle = document.getElementById("btnToggleSidebar");
+    const btnReopen = document.getElementById("btnReopenSidebar");
+
+    function toggleSidebar() {
+      sidebarCollapsed = !sidebarCollapsed;
+      document.body.classList.toggle("sidebar-collapsed", sidebarCollapsed);
+
+      // Met à jour l'icône du bouton header
+      btnToggle.textContent = sidebarCollapsed ? "☰" : "✕";
+      btnToggle.title = sidebarCollapsed ? "Afficher le panneau" : "Replier le panneau";
+
+      // Leaflet doit recalculer sa taille après le changement de layout
+      setTimeout(() => {
+        map.invalidateSize({ animate: true });
+      }, 320); // attendre la fin de la transition CSS
+    }
+
+    btnToggle.addEventListener("click", toggleSidebar);
+    btnReopen.addEventListener("click", toggleSidebar);
+
+    /* ============================================================
+       HELPERS
+       ============================================================ */
     function showToast(msg) {
       const t = document.getElementById("toast");
       t.textContent = msg;
@@ -366,11 +612,20 @@
 
     function jitter(lat, lon, index) {
       const angle = index * 2.399963;
-      const r = 0.0018 + (index % 7) * 0.00035;
+      const r = CONFIG.JITTER_BASE + (index % 7) * CONFIG.JITTER_STEP;
       return [lat + Math.cos(angle) * r, lon + Math.sin(angle) * r];
     }
 
-    // ========== Autocomplete ==========
+    function formatDate(d) {
+      if (!d) return "—";
+      return new Date(d).toLocaleDateString("fr-FR", {
+        day: "2-digit", month: "short", year: "numeric"
+      });
+    }
+
+    /* ============================================================
+       AUTOCOMPLETE
+       ============================================================ */
     let suggestTimer = null;
     const searchInput = document.getElementById("searchInput");
     const suggestionsEl = document.getElementById("suggestions");
@@ -400,11 +655,15 @@
     function renderSuggestions(list) {
       if (!list.length) { hideSuggestions(); return; }
       suggestionsEl.innerHTML = list.map(c => `
-        <div class="suggestion-item" data-code="${c.code}" data-nom="${c.nom}" data-lat="${c.centre?.coordinates[1]}" data-lon="${c.centre?.coordinates[0]}">
-          <strong>${c.nom}</strong> <span style="color:#64748b">(${(c.codesPostaux||[])[0] || c.code})</span>
+        <div class="suggestion-item"
+             data-code="${c.code}" data-nom="${c.nom}"
+             data-lat="${c.centre?.coordinates[1]}" data-lon="${c.centre?.coordinates[0]}">
+          <strong>${c.nom}</strong>
+          <span style="color:#64748b">(${(c.codesPostaux||[])[0] || c.code})</span>
         </div>
       `).join("");
       suggestionsEl.style.display = "block";
+
       suggestionsEl.querySelectorAll(".suggestion-item").forEach(el => {
         el.addEventListener("click", () => {
           searchInput.value = el.dataset.nom;
@@ -423,11 +682,14 @@
       if (!e.target.closest(".search-box")) hideSuggestions();
     });
 
-    // ========== Recherche ==========
+    /* ============================================================
+       RECHERCHE / GÉOLOCALISATION / REVERSE GEOCODE
+       ============================================================ */
     document.getElementById("btnSearch").addEventListener("click", () => {
       const q = searchInput.value.trim();
       if (q) doTextSearch(q);
     });
+
     searchInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         const q = searchInput.value.trim();
@@ -490,37 +752,45 @@
       }
     }
 
-    // ========== Chargement des analyses ==========
+    /* ============================================================
+       CHARGEMENT DES ANALYSES (Hub'Eau)
+       ============================================================ */
     async function loadCommune(commune) {
       currentCommune = commune;
-      selectedDate = document.getElementById("dateInput").value || new Date().toISOString().slice(0, 10);
+      selectedDate = document.getElementById("dateInput").value ||
+                     new Date().toISOString().slice(0, 10);
 
       document.getElementById("communeInfo").innerHTML =
         `<strong>${commune.nom}</strong> (${commune.code}) — analyses autour du ${formatDate(selectedDate)}`;
 
-      document.getElementById("list").innerHTML = `<div class="loading">Chargement des analyses…</div>`;
+      document.getElementById("list").innerHTML =
+        `<div class="loading">Chargement des analyses…</div>`;
       markersLayer.clearLayers();
       allPrelevements = [];
 
-      // Fenêtre de dates : ± 180 jours autour de la date choisie
       const target = new Date(selectedDate);
       const minD = new Date(target);
-      minD.setDate(minD.getDate() - 180);
+      minD.setDate(minD.getDate() - CONFIG.DAYS_BEFORE);
       const maxD = new Date(target);
-      maxD.setDate(maxD.getDate() + 60);
+      maxD.setDate(maxD.getDate() + CONFIG.DAYS_AFTER);
 
       const dateMin = minD.toISOString().slice(0, 10);
       const dateMax = maxD.toISOString().slice(0, 10);
 
       try {
-        const url = `https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${commune.code}&date_min_prelevement=${dateMin}&date_max_prelevement=${dateMax}&size=20000`;
+        const url = `https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis` +
+                    `?code_commune=${commune.code}` +
+                    `&date_min_prelevement=${dateMin}` +
+                    `&date_max_prelevement=${dateMax}` +
+                    `&size=${CONFIG.API_SIZE}`;
+
         const res = await fetch(url);
         const json = await res.json();
         const rows = json.data || [];
 
         if (rows.length === 0) {
-          // Fallback : dernière année disponible
-          const url2 = `https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${commune.code}&size=5000`;
+          const url2 = `https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis` +
+                       `?code_commune=${commune.code}&size=${CONFIG.FALLBACK_SIZE}`;
           const res2 = await fetch(url2);
           const json2 = await res2.json();
           processResults(json2.data || [], commune, target);
@@ -528,14 +798,15 @@
           processResults(rows, commune, target);
         }
       } catch (err) {
-        document.getElementById("list").innerHTML = `<div class="empty">Erreur de chargement des données</div>`;
+        document.getElementById("list").innerHTML =
+          `<div class="empty">Erreur de chargement des données</div>`;
         showToast("Erreur API Hub'Eau");
       }
     }
 
     function processResults(rows, commune, targetDate) {
-      // Grouper par code_prelevement
       const mapPrelev = new Map();
+
       rows.forEach(r => {
         const code = r.code_prelevement;
         if (!mapPrelev.has(code)) {
@@ -550,7 +821,10 @@
         }
         mapPrelev.get(code).params.push({
           libelle: r.libelle_parametre || r.libelle_parametre_web || r.code_parametre,
-          resultat: r.resultat_alphanumerique || (r.resultat_numerique != null ? r.resultat_numerique + " " + (r.libelle_unite || "") : "—"),
+          resultat: r.resultat_alphanumerique ||
+                    (r.resultat_numerique != null
+                      ? r.resultat_numerique + " " + (r.libelle_unite || "")
+                      : "—"),
           limite: r.limite_qualite_parametre,
           reference: r.reference_qualite_parametre
         });
@@ -558,7 +832,7 @@
 
       allPrelevements = Array.from(mapPrelev.values());
 
-      // Trier par proximité de date
+      // Tri par proximité de date
       allPrelevements.sort((a, b) => {
         const da = Math.abs(new Date(a.date) - targetDate);
         const db = Math.abs(new Date(b.date) - targetDate);
@@ -567,13 +841,16 @@
 
       renderList();
       updateMapMarkers(commune);
-      map.setView([commune.lat, commune.lon], 12);
+      map.setView([commune.lat, commune.lon], CONFIG.COMMUNE_ZOOM);
     }
 
-    // ========== Filtres ==========
+    /* ============================================================
+       FILTRES
+       ============================================================ */
     document.querySelectorAll(".filter-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".filter-btn")
+                .forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         currentFilter = btn.dataset.filter;
         renderList();
@@ -591,17 +868,24 @@
       });
     }
 
+    /* ============================================================
+       RENDU LISTE
+       ============================================================ */
     function renderList() {
       const list = getFiltered();
       const container = document.getElementById("list");
+
       if (!list.length) {
         container.innerHTML = `<div class="empty">Aucun prélèvement pour ce filtre</div>`;
         return;
       }
+
       container.innerHTML = list.map((p, i) => {
         const conf = isConforme(p);
         const badgeClass = conf === true ? "ok" : conf === false ? "ko" : "unk";
-        const badgeText = conf === true ? "Conforme" : conf === false ? "Non conforme" : "—";
+        const badgeText  = conf === true ? "Conforme" :
+                           conf === false ? "Non conforme" : "—";
+
         return `
           <div class="card" data-idx="${i}">
             <div class="card-header">
@@ -616,50 +900,60 @@
 
       container.querySelectorAll(".card").forEach(card => {
         card.addEventListener("click", () => {
-          const idx = parseInt(card.dataset.idx);
-          openDetail(list[idx]);
+          openDetail(list[parseInt(card.dataset.idx)]);
         });
       });
     }
 
-    function formatDate(d) {
-      if (!d) return "—";
-      const dt = new Date(d);
-      return dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
-    }
-
-    // ========== Carte markers ==========
+    /* ============================================================
+       MARKERS
+       ============================================================ */
     function updateMapMarkers(commune) {
       markersLayer.clearLayers();
       const list = getFiltered();
+
       list.forEach((p, i) => {
         const [lat, lon] = jitter(commune.lat, commune.lon, i);
         const conf = isConforme(p);
-        const color = conf === true ? "#22c55e" : conf === false ? "#ef4444" : "#94a3b8";
+        const color = conf === true  ? "#22c55e" :
+                      conf === false ? "#ef4444" : "#94a3b8";
+
         const icon = L.divIcon({
           className: "",
           html: `<div class="marker-icon" style="background:${color}"></div>`,
           iconSize: [18, 18],
           iconAnchor: [9, 9]
         });
+
         const m = L.marker([lat, lon], { icon });
-        m.bindPopup(`<strong>${formatDate(p.date)}</strong><br>${p.distributeur}<br><em>${conf === true ? "Conforme" : conf === false ? "Non conforme" : "—"}</em>`);
+        m.bindPopup(`
+          <strong>${formatDate(p.date)}</strong><br>
+          ${p.distributeur}<br>
+          <em>${conf === true ? "Conforme" : conf === false ? "Non conforme" : "—"}</em>
+        `);
         m.on("click", () => openDetail(p));
         markersLayer.addLayer(m);
       });
     }
 
-    // ========== Détail ==========
+    /* ============================================================
+       DÉTAIL
+       ============================================================ */
     function openDetail(p) {
       const conf = isConforme(p);
-      document.getElementById("detailTitle").textContent = `Prélèvement du ${formatDate(p.date)}`;
-      let html = `
+      document.getElementById("detailTitle").textContent =
+        `Prélèvement du ${formatDate(p.date)}`;
+
+      document.getElementById("detailBody").innerHTML = `
         <div class="detail-section">
           <h3>Informations</h3>
           <p><strong>Commune :</strong> ${p.commune}</p>
           <p><strong>Distributeur :</strong> ${p.distributeur}</p>
           <p><strong>Conclusion :</strong> ${p.conclusion || "—"}</p>
-          <p><strong>Conformité :</strong> ${conf === true ? "✅ Conforme" : conf === false ? "❌ Non conforme" : "—"}</p>
+          <p><strong>Conformité :</strong>
+            ${conf === true ? "✅ Conforme" :
+              conf === false ? "❌ Non conforme" : "—"}
+          </p>
         </div>
         <div class="detail-section">
           <h3>Paramètres analysés (${p.params.length})</h3>
@@ -676,7 +970,6 @@
           </table>
         </div>
       `;
-      document.getElementById("detailBody").innerHTML = html;
       document.getElementById("detailPanel").classList.add("open");
     }
 
@@ -684,11 +977,11 @@
       document.getElementById("detailPanel").classList.remove("open");
     });
 
-    // Changement de date → recharger si une commune est déjà sélectionnée
+    /* ============================================================
+       CHANGEMENT DE DATE
+       ============================================================ */
     document.getElementById("dateInput").addEventListener("change", () => {
-      if (currentCommune) {
-        loadCommune(currentCommune);
-      }
+      if (currentCommune) loadCommune(currentCommune);
     });
   </script>
 </body>
